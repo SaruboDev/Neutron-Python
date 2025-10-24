@@ -7,7 +7,7 @@ Made by **SaruboDev**: <https://github.com/SaruboDev>.
 Copyright: **Apache License 2.0 ©**, see github page for more.
 
 
-Should support other modules that interact with jax, depending on which one.
+Should support other modules that interact with jax, depending on which one. *+[WARNING]** This was made as a small project for me to learn the jax environment more, you should expect some problems, if you find any, feel free to tell me.
 
 ### Quickstart
 You can use Neutron wrapper *mostly* like you would use Tensorflow.
