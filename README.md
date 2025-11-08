@@ -89,6 +89,7 @@ from the model, considering verbose set to true to show a progress bar and me us
 ``` 
 You can see (especially from the evaluation accuracy) 1 layer with 1 head is... definitely not much.
 But it works as intended!
+
 Also note that metrics are shown as per-epoch values, and not a sum of all the prior epochs + the current one, so if the first epoch finished with loss of "4.6406" (like our first epoch in the example) the second one doesn't start from "4.6406" but will start from 0.
 
 And that's pretty much it for the quickstart of Neutron Wrapper. It will possibly grow more and more with time as i add new things or optimize the code more.
