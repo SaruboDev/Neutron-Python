@@ -7,82 +7,95 @@ Made by **SaruboDev**: <https://github.com/SaruboDev>.
 Copyright: **Apache License 2.0 ©**, see github page for more.
 
 
-Should support other modules that interact with jax, depending on which one. **[WARNING]** This was made as a small project for me to learn the jax environment more, you should expect some problems, if you find any, feel free to tell me.
+Should support other modules that interact with jax.
 
 ### Quickstart
 You can use Neutron wrapper *mostly* like you would use Tensorflow.
-Make your model class in jax style, call our Model in neutron.models, compile and fit!
 
-**Just a warning**: i'm fairly new to the jax environment myself, so lots of stuff may probably be unoptimized or not entirely correct. Feel free to let me know!
+Make your model class in jax style, call my Model in neutron.models, compile and fit!
 
 Adds a few quality of life stuff to make you able to speedrun tests, i'm not yet sure about big-project development with this module.
 The goal with this wrapper is to make jax more accessible and train your models faster with Jit compilation.
 
-For example, having your custom model (this model sucks, it's just for example)::
+Keep in mind that the wrapper is made in Python, so even if i'm giving you access to jit compilation and jax speed, the wrapper itself
+will not be lightning-fast (but i doubt you'll notice slowness because of it).
 
-    class custom_model(equinox.Module):
-        vocab_size: int         = equinox.field(static = True)
-        embedding_dim: int      = equinox.field(static = True)
-        embed   : equinox.nn.Embedding
-        output  : equinox.nn.Linear
-        
-        def __init__(self, vocab_size: int, embedding_dim: int, key: jax.random.PRNGKey):
-            keyEmbed, keyOut    = jax.random.split(key, 2)
-
-            self.vocab_size     = vocab_size
-            self.embedding_dim  = embedding_dim
-
-            self.embed  = equinox.nn.Embedding(vocab_size, embedding_dim, key = keyEmbed)
-            self.output = equinox.nn.Linear(embedding_dim, 1, key = keyOut)
-        
-        def __call__(self, x, key: jax.random.PRNGKey):
-            # Depending on what you need you might want to vmap one, or multiple layers.
-            # In this case i'll just vmap everything [DO NOT UNLESS YOU NEED IT].
-            x   = jax.vmap(self.embed)(x)
-            out = jax.vmap(self.output)(x)
-            return out
-
-You can now wrap your model like this (note: 512 is vocab_size and 256 is embedding dim in this example)::
-
+After you've defined your model classes (for me i'll use a simple ViT transformer based on <https://docs.kidger.site/equinox/examples/vision_transformer/>,
+you can check it out in the Neutron's docs where i'll explain more) you will need:
+- A dataset (i'm using the Cifar100 for a quick test, you can download your datasets, or use tf/torch, whatever you prefer).
+- Initialize Neutron's Model class.
+It's really quick and easy:
+```py
     from neutron.models import Model
 
-    model = Model(custom_model, 512, 256)
+    # Note that you gotta remember which arguments your model needs as this class doesn't suggest them.
+    model = Model(
+        Vit,
+        img_size = 32,
+        embedding_dim = 192,
+        num_heads = 1,
+        num_layers = 1,
+        dropout_rate = 0.01,
+        patch_size = 4,
+        num_classes = 100,
+        channels = 3,
+        seed = 42
+    )
+``` 
+Now we call the compile function, where we specify the optimizer we want to use, which losses, metrics, callbacks and
+how much gradient accumulation you want to use:
+```py
+    import optax
+    from neutron.metrics import accuracy
+
     model.compile(
         optimizer = optax.adam(learning_rate = 0.0001),
-        loss = [(optax.losses.sigmoid_binary_cross_entropy, 1.0)],
+        loss = optax.softmax_cross_entropy_with_integer_labels,
         metrics = [accuracy],
-        gradAccSteps = 3
-    )
-
-    history = model.fit(
-        data = None,
-        x_train = jnp.zeros((250,), dtype = jnp.uint16), # Just for the example.
-        y_train = None,
-        batch_size = 32,
-        epochs = 1,
-        steps_for_epoch = None,
         callbacks = [],
-        verbose = True,
-        starting_epoch = 1,
-        starting_step_train = 0
+        gradAccSteps = None
     )
+``` 
+This compile has a few different ways you can add losses and metrics (even for multi-task), you can see more about it in the docs for it.
 
-    model.predict(x)
+And now, finally, we can just call the fit function, where the wrapper will iterate over epochs, steps and will handle keys, callbacks and everything:
+```py
+    hist = model.fit(
+        data = df_gen_train,
+        data_eval = df_gen_test,
+        batch_size = batch_size,
+        epochs = 2,
+        steps_for_epoch = steps_train, # You can leave it to None (default) for auto-calculated steps. Same for eval.
+        steps_for_eval = steps_eval
+    )
+``` 
+Note that for the fit we're using data and data_eval, because i'm using my own batchLoader generator (which is included in Neutron), but
+the function also supports x/y_train and x/y_eval, along with a few extra options to suit your needs. See more about it in the docs.
 
-You might notice a few things:
-1) The model in the example sucks and it's probably wrong. **True**.
-2) You don't really need to specify the PRNGKey if not inside your custom model, True, when you call Model() you can set "seed" if you want
-    your custom PRNGKey, but otherwise it will handle it by itself.
-3) The loss is a list of tuples. This is for compatibility with multi-task models, each tuple is a loss_fun - weight pair.
-    If you only need one loss, you can just write "loss = loss_fun" by itself, and it will automatically get converted.
-4) You have "data" and also "x/y_train", why? Because data is mostly if you're planning on using the custom class datasetGenerator to
-    load bigger datasets. x_train can be used alone if you have self-supervised models, the y_train will automatically be replaced with x_train.
-5) Callbacks can be used just like TensorFlow's ones, my implementation probably lacks of calls, though.
-6) The predict function can take either 1 element of an array of elements and it will give the prediction based on your model.
-7) The fit function returns a "history". The history element is just an array of each metric per-epoch and evaluation. Not for each steps.
+The results of our model training can be seen in the history, which will be automatically returned by the wrapper, in our case, the output
+from the model, considering verbose set to true to show a progress bar and me using an RTX 3060 12Gb to train the model, will be:
+```py
+    Starting epoch 1 / 2
+    Loss: 4.6406 | accuracy : 0.0097 : 100%|████████████████████████████████████████████████████████████████████████████████| 1.56k/1.56k [01:27<00:00, 17.9it/s]
+    Starting Evaluation...
+    Loss: 4.6228 | accuracy : 0.0385 : 100%|████████████████████████████████████████████████████████████████████████████████████| 312/312 [00:08<00:00, 35.0it/s]
+    Starting epoch 2 / 2
+    Loss: 4.6281 | accuracy : 0.0100 : 100%|████████████████████████████████████████████████████████████████████████████████| 1.56k/1.56k [01:22<00:00, 18.9it/s]
+    Starting Evaluation...
+    Loss: 4.6198 | accuracy : 0.0000 : 100%|████████████████████████████████████████████████████████████████████████████████████| 312/312 [00:07<00:00, 39.5it/s]
+    
+    History:
+    {'loss': [4.640584966995352, 4.628129463378201], 'accuracy': [0.009703104993597951, 0.010043213828425096], 'val_loss': [4.6227939902886765, 4.619836975699633], 'val_accuracy': [0.038461538461538464, 0.0]}
+``` 
+You can see (especially from the evaluation accuracy) 1 layer with 1 head is... definitely not much.
+But it works as intended!
+
+And that's pretty much it for the quickstart of Neutron Wrapper. It will possibly grow more and more with time as i add new things or optimize the code more.
+In the meanwhile you can check it out and suggest new features and bug-fixes, thanks a lot!
+    
 
 #### What it currently adds:
-- A Model class that accepts custom models and make you able to fit instantly without defining your own train cycle.
+- A Model class that accepts custom models and makes you able to fit instantly without defining your own train cycle.
     - **Supports**:
     - Single Task Models;
     - Multi Task Models (mostly);
@@ -93,8 +106,17 @@ You might notice a few things:
     - A summary of your model, giving total params, trainable params and non-trainable params.
     - Evaluation is also done at the end of each epoch if the user specified at least x_eval in the "fit" function.
     - Predictions are also used 
-- A custom datasetGenerator class that helps with big dataset that can't stay on memory.
-- Model saving and loading for checkpoints.
-- Model export to TensorFlow.
+- A custom batchLoader class that helps with big datasets that can't stay on memory.
+- Model saving and loading with checkpoints.
 
-If you have some features you'd like this wrapper to support, be sure to add Pull requests or Discussions here on github.
+#### Things to fix or planning to add:
+- Fix Multi-Task History
+- Multi GPU support (i know, sucks i haven't added it yet, i just don't have two gpu's)
+- Grid/Random Search functions
+- Pre-defined metrics
+- Check if the model save-load works correctly
+- Export model to Tensorflow support
+- Optimize the batchLoader more
+
+
+If you have some features you'd like this wrapper to support, be sure to add Pull requests or Discussions here in the github page.
