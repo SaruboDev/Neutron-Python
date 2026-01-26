@@ -39,6 +39,9 @@ class Tracer:
         """
         return f"{type(self.value)}[{np.shape(self.value)}]"
     
+    def __getattribute__(self, name):
+        return getattr(self.value, name)
+
     # Normal Operations
     def __add__(self, other) -> Tracer:
         """
