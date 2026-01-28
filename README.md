@@ -1,124 +1,76 @@
 # Neutron
 
-A simple wrapper for jax, equinox and optax.
+A simple autograd compatible with numpy ndarrays.
 
 Made by **SaruboDev**: <https://github.com/SaruboDev>.
 
 Copyright: **Apache License 2.0 ©**, see github page for more.
 
 
-Should support other modules that interact with jax.
+### Description
+I made this simple autograd so it can be used mostly as a mix between pytorch, jax and tensorflow.
 
-### Quickstart
-You can use Neutron wrapper *mostly* like you would use Tensorflow.
+I'm keeping most of tensorflow sintaxes to start training.
 
-Make your model class in jax style, call my Model in neutron.models, compile and fit!
+Model creation require a jax-style way to build them.
 
-Adds a few quality of life stuff to make you able to speedrun tests, i'm not yet sure about big-project development with this module.
-The goal with this wrapper is to make jax more accessible and train your models faster with Jit compilation.
-
-Keep in mind that the wrapper is made in Python, so even if i'm giving you access to jit compilation and jax speed, the wrapper itself
-will not be lightning-fast (but i doubt you'll notice slowness because of it).
-
-After you've defined your model classes (for me i'll use a simple ViT transformer based on <https://docs.kidger.site/equinox/examples/vision_transformer/>,
-you can check it out in the Neutron's docs where i'll explain more) you will need:
-- A dataset (i'm using the Cifar100 for a quick test, you can download your datasets, or use tf/torch, whatever you prefer).
-- Initialize Neutron's Model class.
-It's really quick and easy:
+Example:
 ```py
-    from neutron.models import Model
-
-    # Note that you gotta remember which arguments your model needs as this class doesn't suggest them.
-    model = Model(
-        Vit,
-        img_size = 32,
-        embedding_dim = 192,
-        num_heads = 1,
-        num_layers = 1,
-        dropout_rate = 0.01,
-        patch_size = 4,
-        num_classes = 100,
-        channels = 3,
-        seed = 42
-    )
-``` 
-Now we call the compile function, where we specify the optimizer we want to use, which losses, metrics, callbacks and
-how much gradient accumulation you want to use:
-```py
-    import optax
-    from neutron.metrics import accuracy
-
-    model.compile(
-        optimizer = optax.adam(learning_rate = 0.0001),
-        loss = optax.softmax_cross_entropy_with_integer_labels,
-        metrics = [accuracy],
-        callbacks = [],
-        gradAccSteps = None
-    )
-``` 
-This compile has a few different ways you can add losses and metrics (even for multi-task), you can see more about it in the docs for it.
-
-And now, finally, we can just call the fit function, where the wrapper will iterate over epochs, steps and will handle keys, callbacks and everything:
-```py
-    hist = model.fit(
-        data = df_gen_train,
-        data_eval = df_gen_test,
-        batch_size = batch_size,
-        epochs = 2,
-        steps_for_epoch = steps_train, # You can leave it to None (default) for auto-calculated steps. Same for eval.
-        steps_for_eval = steps_eval
-    )
-``` 
-Note that for the fit we're using data and data_eval, because i'm using my own batchLoader generator (which is included in Neutron), but
-the function also supports x/y_train and x/y_eval, along with a few extra options to suit your needs. See more about it in the docs.
-
-The results of our model training can be seen in the history, which will be automatically returned by the wrapper, in our case, the output
-from the model, considering verbose set to true to show a progress bar and me using an RTX 3060 12Gb to train the model, will be:
-```py
-    Starting epoch 1 / 2
-    Loss: 4.6406 | accuracy : 0.0097 : 100%|████████████████████████████████████████████████████████████████████████████████| 1.56k/1.56k [01:27<00:00, 17.9it/s]
-    Starting Evaluation...
-    Loss: 4.6228 | accuracy : 0.0385 : 100%|████████████████████████████████████████████████████████████████████████████████████| 312/312 [00:08<00:00, 35.0it/s]
-    Starting epoch 2 / 2
-    Loss: 4.6281 | accuracy : 0.0100 : 100%|████████████████████████████████████████████████████████████████████████████████| 1.56k/1.56k [01:22<00:00, 18.9it/s]
-    Starting Evaluation...
-    Loss: 4.6198 | accuracy : 0.0000 : 100%|████████████████████████████████████████████████████████████████████████████████████| 312/312 [00:07<00:00, 39.5it/s]
+class model(Module):
+    linear: Linear
     
-    History:
-    {'loss': [4.640584966995352, 4.628129463378201], 'accuracy': [0.009703104993597951, 0.010043213828425096], 'val_loss': [4.6227939902886765, 4.619836975699633], 'val_accuracy': [0.038461538461538464, 0.0]}
-``` 
-You can see (especially from the evaluation accuracy) 1 layer with 1 head is... definitely not much.
-But it works as intended!
+    def __init__(self):
+        self.linear = Linear(input_dim = 1, output_dim = 1)
 
-Also note that metrics are shown as per-epoch values, and not a sum of all the prior epochs + the current one, so if the first epoch finished with loss of "4.6406" (like our first epoch in the example) the second one doesn't start from "4.6406" but will start from 0.
+    def __call__(self, x, *args, **kwds):
+        output = self.linear(x)
 
-And that's pretty much it for the quickstart of Neutron Wrapper. It will possibly grow more and more with time as i add new things or optimize the code more.
-In the meanwhile you can check it out and suggest new features and bug-fixes, thanks a lot!
-    
+        return output
+```
+I'm also slowly making each module way more transparent so that you could technically grab each by itself and check how it works or make it do whatever you want.
 
-#### What it currently adds:
-- A Model class that accepts custom models and makes you able to fit instantly without defining your own train cycle.
-    - **Supports**:
-    - Single Task Models;
-    - Multi Task Models (mostly);
-    - Self-supervised Models;
-    - Gradient Accumulation;
-    - Callbacks;
-    - Metrics for train and evaluation.
-    - A summary of your model, giving total params, trainable params and non-trainable params.
-    - Evaluation is also done at the end of each epoch if the user specified at least x_eval in the "fit" function.
-    - Predictions are also used 
-- A custom batchLoader class that helps with big datasets that can't stay on memory.
-- Model saving and loading with checkpoints.
+NOTE: It's built with simple python, so no optimizations nor gpu compat (for now at least, idk, maybe in the future i'll learn c++ and port it over with some tweaks, when i feel like this one is mostly completed).
 
-#### Things to fix or planning to add:
-- Fix Multi-Task History
-- Multi GPU support (i know, sucks i haven't added it yet, i just don't have two gpu's)
-- Grid/Random Search functions
-- Pre-defined metrics
-- Check if the model save-load works correctly
-- Export model to Tensorflow support
-- Optimize the batchLoader more
+### How it's made
+As of now we have 4 major classes and functions that make this work:
+- Module:
+    - It's the class that makes creating models and layers easy, handles it's __eq__ and __hash__ (even if you paste the same layer it will count them as different).
 
+    - On initialization, converts all non-static variables to a Tracer class object.
+    - Handles parameters update for the optimizer.
+- Tracer:
+    - It's the class that keeps track of any change or operations done with it's values. Keeps track of it's parents operations and automatically calculates it's parent's gradients during the backwards process.
+    - Uses a really simple Topological Ordering function to know which order of calculations to do.
+- autograd fun:
+    - A simple function that takes your model, your inputs and optimizer as input, automatically connects them together (for now, later on i will probably divide it into multiple sub-modules users can use freely), then gives back the output Tracer, where you can use `Tracer.value` to grab it's value and run loss and metrics on.
+- field fun:
+    - Technically the same exact code that Equinox uses to create it's own `eqx.static_field()` thingy, so that means you can make stuff static too here with `field(static = True)`.
+ 
+### What does and doesn't work?
+As of now the only test i did was:
+```py
+m = model()
 
-If you have some features you'd like this wrapper to support, be sure to add Pull requests or Discussions here in the github page.
+sgd = SGD()
+
+x = np.random.uniform(size = (1, 1))
+result = autograd(m, x, sgd)m = model()
+
+sgd = SGD()
+
+x = np.random.uniform(size = (1, 1))
+result = autograd(m, x, sgd)
+print(result)
+print(result)
+```
+So it's not a really good metric...
+
+I'll have to test:
+- If tracers successfully update their own gradient (should work by that little test).
+- If the optimizer and `Tracer._update(dict)` works to update weight and bias values.
+- Ram usage.
+- Once i add a good loss, optimizer and metric i'll test a simple classification model.
+
+### Why did i do all this?
+Funsies, it's my first actual project that is not a simple EDA or sliding window over an image to face recognition, also i hate SQL and R, so i'd never do a project on those stuff.
+And i kinda wanted to know how backprop works, since most of the explanations on the internet just says "oh, backprop just calculates derivatives, dunno how though" and i was like "i suck at math! let's do it", can't lie i had lot's of researches and questions to do, my code is 90% mine, some stuff i found on stackoverflow, other stuff like "what was the difference between __getattribute__ and __getattr__?" i just asked gpt, lol.
