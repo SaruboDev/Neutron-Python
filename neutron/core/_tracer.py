@@ -37,10 +37,25 @@ class Tracer:
         """
         Representation of the Tracer.
         """
-        return f"{type(self.value)}[{np.shape(self.value)}]"
+        if type(self.value) == np.ndarray:
+            return f"{self.value.dtype}[{np.shape(self.value)}]"
+        
+        return f"{type(self.value)}[{self.value}]"
     
-    def __getattribute__(self, name):
+    def __getattr__(self, name):
         return getattr(self.value, name)
+
+    # Exceptions
+    def astype(self, new_dtype) -> Tracer:
+        """
+        Changes dtype.
+        """
+        if type(self.value) == np.ndarray:
+            output = Tracer(self.value.astype(np.dtype(new_dtype.name)))
+            output.__setparentop__([self, self.back_dtype, None])
+            return output
+        else:
+            raise Exception("You can't change dtype of a non array variable!")
 
     # Normal Operations
     def __add__(self, other) -> Tracer:
@@ -221,7 +236,7 @@ class Tracer:
         return output
     
     # Backwards
-    def backwards(self) -> None:
+    def backwards(self, need_whole_graph: bool = False) -> None:
         """
         This method gets called ONLY for the last Tracer item obtained from a Model.
         Meaning that the backwards process throughout the relevant Tracers starts from here.
@@ -235,20 +250,29 @@ class Tracer:
         # du/dx is the result of the basic derivative.
 
         # Will actually do the backwards process for each item from the last to the first, with respect to the priority order.
+        # And inside the back_* functions, i did reshape the variables myself, but numpy would've broadcasted them itself.
         for tracer in order:
-            if len(tracer.parents_operations) > 0:
-                if tracer.parents_operations[1] is not None:
-                    a = tracer.parents_operations[0]
-                    b = tracer.parents_operations[2]
-                    tracer.parents_operations[1](tracer, a, b)
+            if len(tracer.parents_operations) > 0 and tracer.parents_operations[1] is not None:
+                a = tracer.parents_operations[0]
+                b = tracer.parents_operations[2]
+                tracer.parents_operations[1](tracer, a, b)
+        
+        if need_whole_graph == True:
+            return
+        
+        self.parents_operations = None
+
+        return
 
     def back_add(self, prev_node, a, b) -> None:
         # ADD : f(x) + g(x) = f'(x) + g'(x)
         
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient * 1 # x + b = 1 + 0 = 1
+            a_gradient_add  = prev_node.gradient * 1 # x + b = 1 + 0 = 1
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += prev_node.gradient * 1 # a + b = 0 + 1 = 1
+            b_gradient_add  = prev_node.gradient * 1 # a + b = 0 + 1 = 1
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
 
         return
     
@@ -256,9 +280,11 @@ class Tracer:
         # SUB : f(x) - g(x) = f'(x) - g'(x)
 
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient * 1     # x - b = 1 - 0 = 1
+            a_gradient_add  = prev_node.gradient * 1     # x - b = 1 - 0 = 1
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += prev_node.gradient * (-1)  # a - x = 0 - 1 = -1
+            b_gradient_add  = prev_node.gradient * (-1)  # a - x = 0 - 1 = -1
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
         
         return
     
@@ -268,9 +294,11 @@ class Tracer:
         b_value = b.value if isinstance(b, Tracer) else b
 
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient * b_value # x * b_value = 1 * b_value = b_value
+            a_gradient_add  = prev_node.gradient * b_value # x * b_value = 1 * b_value = b_value
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += prev_node.gradient * a_value # a_value * x = a_value * 1 = a_value
+            b_gradient_add  = prev_node.gradient * a_value # a_value * x = a_value * 1 = a_value
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
         
         return
     
@@ -283,18 +311,22 @@ class Tracer:
         b_res = -a_value / b_value**2   # (0 * b - a * 1) / b**2 = (0 - a) / b**2
 
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient * a_res
+            a_gradient_add  = prev_node.gradient * a_res
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += prev_node.gradient * b_res
+            b_gradient_add  = prev_node.gradient * b_res
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
 
         return
     
     def back_floordiv(self, prev_node, a, b) -> None:
         # FLOORDIV : Derivatives for g(x) and f(x) is always 0.
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient * 0
+            a_gradient_add  = prev_node.gradient * 0
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += prev_node.gradient * 0
+            b_gradient_add  = prev_node.gradient * 0
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
 
         return
 
@@ -307,9 +339,11 @@ class Tracer:
         b_res = (a_value ** b_value) * np.log(a_value)  # (a ** b) * ln(a)
 
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient * a_res
+            a_gradient_add  = prev_node.gradient * a_res
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += prev_node.gradient * b_res
+            b_gradient_add  = prev_node.gradient * b_res
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
 
         return
     
@@ -322,9 +356,11 @@ class Tracer:
         b_res = -(a_value // b_value)   # 0 - 1 * (a // b)
 
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient * a_res
+            a_gradient_add  = prev_node.gradient * a_res
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += prev_node.gradient * b_res
+            b_gradient_add  = prev_node.gradient * b_res
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
 
         return
     
@@ -335,10 +371,24 @@ class Tracer:
 
 
         if isinstance(a, Tracer):
-            a.gradient += prev_node.gradient @ b_value.T
+            a_gradient_add  = prev_node.gradient @ b_value.T
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
         if isinstance(b, Tracer):
-            b.gradient += a_value.T @ prev_node.gradient
+            b_gradient_add  =  a_value.T @ prev_node.gradient
+            b.gradient      += np.reshape(b_gradient_add, np.shape(b.value))
         
+        return
+
+    def back_dtype(self, prev_node, a, b) -> None:
+        # If we change dtype then the gradient is literally the same, so we just add it.
+
+        if isinstance(a, Tracer):
+            gradient = prev_node.gradient
+            if prev_node.gradient.dtype != a.value.dtype:
+                gradient = prev_node.gradient.astype(a.value.dtype)
+
+            a.gradient += np.reshape(gradient, np.shape(a.value))
+
         return
 
 ################
