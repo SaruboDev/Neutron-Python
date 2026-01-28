@@ -61,7 +61,6 @@ sgd = SGD()
 x = np.random.uniform(size = (1, 1))
 result = autograd(m, x, sgd)
 print(result)
-print(result)
 ```
 So it's not a really good metric...
 
