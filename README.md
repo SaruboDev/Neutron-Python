@@ -39,7 +39,7 @@ As of now we have 4 major classes and functions that make this work:
     - On initialization, converts all non-static variables to a Tracer class object.
     - Handles parameters update for the optimizer.
 - Tracer:
-    - It's the class that keeps track of any change or operations done with it's values. Keeps track of it's parents operations and automatically calculates it's parent's gradients during the backwards process.
+    - Known also as Variable or Tensor, it's the class that keeps track of any change or operations done with it's values. Keeps track of it's parents operations and automatically calculates it's parent's gradients during the backwards process.
     - Uses a really simple Topological Ordering function to know which order of calculations to do.
 - autograd fun:
     - A simple function that takes your model, your inputs and optimizer as input, automatically connects them together (for now, later on i will probably divide it into multiple sub-modules users can use freely), then gives back the output Tracer, where you can use `Tracer.value` to grab it's value and run loss and metrics on.
@@ -54,19 +54,15 @@ m = model()
 sgd = SGD()
 
 x = np.random.uniform(size = (1, 1))
-result = autograd(m, x, sgd)m = model()
-
-sgd = SGD()
-
-x = np.random.uniform(size = (1, 1))
 result = autograd(m, x, sgd)
+
 print(result)
 ```
 So it's not a really good metric...
 
 I'll have to test:
 - If tracers successfully update their own gradient (should work by that little test).
-- If the optimizer and `Tracer._update(dict)` works to update weight and bias values.
+- If the optimizer and `update(dict)` works to update weight and bias values.
 - Ram usage.
 - Once i add a good loss, optimizer and metric i'll test a simple classification model.
 
