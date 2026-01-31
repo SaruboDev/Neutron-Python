@@ -45,6 +45,61 @@ class Tracer:
     def __getattr__(self, name):
         return getattr(self.value, name)
 
+    def __array__(self):
+        return self.value
+    
+    def __array_ufunc__(self, ufunc, method, *args, **kwargs):
+        inputs = [x.value if isinstance(x, Tracer) else x for x in args]
+        result = getattr(ufunc, method)(*inputs, **kwargs)
+
+        new_tracer  = Tracer(result)
+        all_parents = [x for x in args if isinstance(x, Tracer)]
+
+        parent_1 = all_parents[0] if len(all_parents) > 0 else None
+        parent_2 = all_parents[1] if len(all_parents) > 1 else None
+
+        backwards_map = {
+            "add"           : self.back_add,
+            "subtract"      : self.back_sub,
+            "multiply"      : self.back_mul,
+            "log"           : self.back_log,
+            "true_divide"   : self.back_truediv,
+            "matmul"        : self.back_matmul
+        }
+
+        operation = backwards_map.get(ufunc.__name__)
+
+        new_tracer.__setparentop__([parent_1, operation, parent_2])
+        return new_tracer
+
+    def __array_function__(self, func, types, *args, **kwargs):
+        backwards_map: dict = {
+            "sum": self.back_sum
+        }
+        variables, named_args = args
+        if func is np.sum:
+                result = func(variables[0].value, **named_args)
+        else:
+            return NotImplemented
+            
+        operation = backwards_map.get(func.__name__)
+
+        new_tracer  = Tracer(result)
+        all_parents = [x for x in variables if isinstance(x, Tracer)]
+
+        parent_1 = all_parents[0] if len(all_parents) > 0 else None
+        parent_2 = all_parents[1] if len(all_parents) > 1 else None
+
+        new_tracer.__setparentop__([parent_1, operation, parent_2, named_args])
+
+        return new_tracer
+
+    def __neg__(self):
+        result = Tracer(-self.value)
+        result.__setparentop__([self, self.back_neg, None])
+
+        return result
+
     # Exceptions
     def astype(self, new_dtype) -> Tracer:
         """
@@ -145,7 +200,7 @@ class Tracer:
 
         output.__setparentop__([self, self.back_matmul, other])
         return output
-    
+
     # Right hand operations
     def __radd__(self, other) -> Tracer:
         """
@@ -391,6 +446,34 @@ class Tracer:
 
         return
 
+    def back_neg(self, prev_node, a, b) -> None:
+        # Just like dtype, it's simple the same thing. But it's negative so -gradient
+        if isinstance(a, Tracer):
+            gradient = -prev_node.gradient
+
+            a.gradient += np.reshape(gradient, np.shape(a.value))
+
+        return
+
+    def back_log(self, prev_node, a, b) -> None:
+        # LOG : Should be f'(x) = 1 / x, so the gradient should be prev_node.gradient * (1 / x)
+
+        a_value = a.value if isinstance(a, Tracer) else a
+        b_value = b.value if isinstance(b, Tracer) else b
+
+        if isinstance(a, Tracer):
+            a_gradient_add  = prev_node.gradient * (1 / a_value)
+            a.gradient      += np.reshape(a_gradient_add, np.shape(a.value))
+        
+
+        return
+
+    def back_sum(self, prev_node, a, b) -> None:
+        # SUM: Should always be 1.
+        a_value = a.value if isinstance(a, Tracer) else a
+        b_value = b.value if isinstance(b, Tracer) else b
+
+        return
 ################
 ### Ordering ###
 ################

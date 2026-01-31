@@ -1,8 +1,9 @@
 from neutron.activations import softmax
+from neutron.core._tracer import Tracer
 
 import numpy as np
 
-def log_loss(y_true, y_pred, from_logits: bool = False) -> float:       
+def log_loss(y_pred, y_true, from_logits: bool = False) -> Tracer:       
     """
     Applies the log loss, or Cross Entropy to calculate your model loss.\n
     NOTE: For the logit formula, i think there's a way more optimized version without using softmax.
@@ -14,11 +15,11 @@ def log_loss(y_true, y_pred, from_logits: bool = False) -> float:
     :return: Loss
     :rtype: float
     """ 
-    result: float = 0.0
+    result: Tracer
 
     if not from_logits:
-        result = -sum(y_true * np.log(y_pred + 1e-12), axis = 1)
+        result = -np.sum((y_true * np.log(y_pred + 1e-12)), axis = 1)
     else:
-        result = -sum(y_true * np.log(softmax(y_pred - np.max(y_pred, axis = 1, keepdims = True))))
+        result = -(y_true * np.log(softmax(y_pred - np.max(y_pred, axis = 1, keepdims = True)))).sum(axis=1)
 
     return result

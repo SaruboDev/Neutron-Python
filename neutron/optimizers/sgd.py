@@ -17,7 +17,6 @@ class SGD:
         :param lr: Learning Rate.
         :type lr: float
         """
-        new_updates: dict = {}
 
         def calculate(instance) -> dict:
             updated: dict = {}
@@ -35,15 +34,21 @@ class SGD:
 
             return updated
 
-        for variable in params:
-            if isinstance(variable, Tracer):
-                new_updates.update(calculate(variable))
-                continue
-            
-            for inner_tracer in vars(variable):
-                tracer_instance = getattr(variable, inner_tracer)
-                if isinstance(tracer_instance, Tracer):
-                    new_updates.update(calculate(tracer_instance))
+        def extract_value_grad(params):
+            new_updates: dict = {}
 
+            for variable in params:
+                if isinstance(variable, Tracer):
+                    new_updates.update(calculate(variable))
+                    continue
+                
+                for inner_tracer in vars(variable):
+                    tracer_instance = getattr(variable, inner_tracer)
+                    if isinstance(tracer_instance, Tracer):
+                        new_updates.update(calculate(tracer_instance))
+                
+            return new_updates
+
+        new_updates: dict = extract_value_grad(params = params)
         # Will return a {instance : {value, gradient}}
         return new_updates
