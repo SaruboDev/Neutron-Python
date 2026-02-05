@@ -1,6 +1,6 @@
 # Neutron
 
-A simple autograd compatible with numpy ndarrays.
+A simple autodiff compatible with numpy ndarrays.
 
 Made by **SaruboDev**: <https://github.com/SaruboDev>.
 
@@ -8,7 +8,7 @@ Copyright: **Apache License 2.0 ©**, see github page for more.
 
 
 ### Description
-I made this simple autograd so it can be used mostly as a mix between pytorch, jax and tensorflow.
+I made this simple autodiff so it can be used mostly as a mix between pytorch, jax and tensorflow.
 
 I'm keeping most of tensorflow sintaxes to start training.
 
@@ -41,7 +41,7 @@ As of now we have 4 major classes and functions that make this work:
 - Tracer:
     - Known also as Variable or Tensor, it's the class that keeps track of any change or operations done with it's values. Keeps track of it's parents operations and automatically calculates it's parent's gradients during the backwards process.
     - Uses a really simple Topological Ordering function to know which order of calculations to do.
-- autograd fun:
+- autodiff fun:
     - A simple function that takes your model, your inputs and optimizer as input, automatically connects them together (for now, later on i will probably divide it into multiple sub-modules users can use freely), then gives back the output Tracer, where you can use `Tracer.value` to grab it's value and run loss and metrics on.
 - field fun:
     - Technically the same exact code that Equinox uses to create it's own `eqx.static_field()` thingy, so that means you can make stuff static too here with `field(static = True)`.
@@ -54,7 +54,7 @@ m = model()
 sgd = SGD()
 
 x = np.random.uniform(size = (1, 1))
-result = autograd(m, x, sgd)
+result = autodiff(m, x, sgd)
 
 print(result)
 ```
