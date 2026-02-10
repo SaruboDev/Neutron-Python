@@ -376,15 +376,12 @@ class Model:
                         total_loss = loss_tracer
                     else:
                         total_loss = total_loss + loss_tracer
-                    
+                
                 epoch_loss.append(np.mean(total_loss.value))
-                print(epoch_loss)
 
                 total_loss.backwards()
 
                 updates: dict = get_tree(self.model)
-
-                print(f"Update for total_loss: {updates[0].gradient}")
 
                 # Optimizer here
                 new_updates: dict = self.optimizer(updates)
@@ -402,4 +399,4 @@ class Model:
                         pbar.close()
             
             if epoch == epochs:
-                return
+                return result
