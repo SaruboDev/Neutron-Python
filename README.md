@@ -48,6 +48,8 @@ As of now we have 4 major classes and functions that make this work:
     - A simple class that takes your model, your inputs and optimizer as input, automatically connects them together (for now, but if you dig enough you can also extract each function independently and do what you want), then gives show , where you can use `Tracer.value` to grab it's value and run loss and metrics on.
 - field fun:
     - Technically the same exact code that Equinox uses to create it's own `eqx.static_field()` thingy, so that means you can make stuff static too here with `field(static = True)`.
+
+As of now you'll see that i did place lots of placeholders around (like how in the Model.fit() method i added x_batch/x_eval, etc..) it's just for future proof if i want to update i know what i'm missing. The code **IS NOT** clean at all.
  
 ### What does and doesn't work?
 As of now the only test i did was:
