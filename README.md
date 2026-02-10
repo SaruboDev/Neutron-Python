@@ -12,6 +12,7 @@ I made this simple autodiff so it can be used mostly as a mix between pytorch, j
 
 NOTE: It was made for study, not for use! It does work, but definitely not usable in big-scale projects!
 You can still study how it was made, the worse thing is definitely finding out how the derivatives work for each function.
+
 As of now you'll see that i wrote lots of placeholders around (like how in the Model.fit() method i added x_batch/x_eval, etc..) it's just for future proof if i want to update i know what i'm missing. The code **IS NOT** clean at all. I'll clean it, but not now.
 
 I'm keeping most of tensorflow sintaxes to start training.
