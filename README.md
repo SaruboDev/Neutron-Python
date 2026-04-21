@@ -13,7 +13,9 @@ I made this simple autodiff so it can be used mostly as a mix between pytorch, j
 NOTE: It was made for study, not for use! It does work, but definitely not usable in big-scale projects!
 You can still study how it was made, the worse thing is definitely finding out how the derivatives work for each function.
 
-As of now you'll see that i wrote lots of placeholders around (like how in the Model.fit() method i added x_batch/x_eval, etc..) it's just for future proof if i want to update i know what i'm missing. The code **IS NOT** clean at all. I'll clean it, but not now.
+As of now you'll see that i wrote lots of placeholders around (like how in the Model.fit() method I added x_batch/x_eval, etc..) it's just for future proof if I want to update I know what i'm missing. 
+
+**WARNING:** The code **IS NOT** clean at all. I'll clean it, but not now.
 
 I'm keeping most of tensorflow sintaxes to start training.
 
@@ -34,8 +36,6 @@ class model(Module):
 ```
 I'm also slowly making each module way more transparent so that you could technically grab each by itself and check how it works or make it do whatever you want.
 
-NOTE: It's built with simple python, so no optimizations nor gpu compat (for now at least, idk, maybe in the future i'll learn rust and port it over with some tweaks, when i feel like this one is mostly completed).
-
 ### How it's made
 As of now we have 4 major classes and functions that make this work:
 - Module:
@@ -52,7 +52,10 @@ As of now we have 4 major classes and functions that make this work:
     - Technically the same exact code that Equinox uses to create it's own `eqx.static_field()` thingy, so that means you can make stuff static too here with `field(static = True)`.
  
 ### What does and doesn't work?
-As of now the only test i did was:
+
+It doesn't support metrics and callbacks as of now (I have half the logic written here, but I do know how to finish it, I'll have to update it sometime soon).
+
+Considering a very simple test:
 ```py
 m = Model(model)
 loss_fn = log_loss(from_logits = True)
@@ -74,11 +77,8 @@ res = m.fit(
     epochs=2
 )
 ```
-So it's not a really good metric...
 
-It doesn't support metrics and callbacks as of now (i have half the logic written here, but i do know how to finish it, but i'll have to update it sometime soon, maybe).
-
-The output from the result is:
+The output would be:
 ```py
 Starting up...
 Starting Epoch 1 / 2
@@ -100,8 +100,8 @@ Loss: 7.8713: 100%|████████████████████�
  [ 1.3007357e+00  1.6024392e+00  5.1451349e+00 ... -2.0669670e+00
   -8.3570933e-01 -2.9513717e+00]]
 ```
-So you can see that the loss does lower with time! The result is a Tracer object, wrapped in a tuple just in case for multi-task models (should support them as well!), but simple enough, you only need to get the `.value` of it to get the result of the training, since i didn't write a test and predict function for it yet.
+So you can see that the loss does lower with time! The result is a Tracer object, wrapped in a tuple just in case for multi-task models (should support them as well!), but simple enough, you only need to get the `.value` of it to get the result of the training, since I didn't write a test and predict function for it yet.
 
 ### Why did i do all this?
-Funsies, it's my first actual project that is not a simple EDA or sliding window over an image to face recognition, also i hate SQL and R, so i'd never do a project on those stuff.
-And i kinda wanted to know how backprop works, since most of the explanations on the internet just says "oh, backprop just calculates derivatives, dunno how though" and i was like "i suck at math! let's do it", can't lie i had lot's of researches and questions to do and answer, the code is 90% mine, some stuff i found on stackoverflow, other stuff like "what was the difference between __getattribute__ and __getattr__?" or "is it mathematically correct if i do..." i just asked ai's, lol, i ain't a mathematician. REMINDER: only for the theory, all the code you see here is mine, written once i understood the logic behind the task i needed to do.
+It's my first actual project that is not a simple EDA or sliding window over an image to face recognition, also I hate SQL and R, so I'd never do a project on those stuff alone, they're cool if they can be useful in a much bigger project though.
+And I wanted to know how backprop works, since most of the explanations on the internet just says "oh, backprop just calculates derivatives, dunno how though" and can't lie, i had lot's of researches and questions to do and answer, the code is 90% mine, some stuff i found on stackoverflow, other stuff like "what was the difference between __getattribute__ and __getattr__?" or "is it mathematically correct if I do..." I just asked ai's, lol, I ain't a mathematician. REMINDER: only for the theory, all the code you see here is mine, written once I understood the logic behind the task I needed to do.
